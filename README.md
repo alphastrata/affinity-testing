@@ -2,6 +2,11 @@
 
 This repo contains code testing CPU affinity, applications, implications and so on.
 
+For a simple example:
+![simple-maths](popbox/simple-math-throughput.png)
+
+> Not all cores are created equal, and it's surprisingly easy to find 10% performance deltas, esp when your OS does gakked shit.
+
 ## Building
 
 ```bash
