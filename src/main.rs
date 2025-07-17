@@ -6,7 +6,4 @@ fn main() {
     println!(
         "This executable is a placeholder. Please run one of the benchmark binaries directly:"
     );
-    println!("- target/release/simple-math");
-    println!("- target/release/simd-math");
-    println!("- target/release/matrix-math");
 }

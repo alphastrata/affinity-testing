@@ -2,6 +2,8 @@
 
 **0. to see what i'm testing here, open a cpu graph like `btop` or task manager etc**
 
+![gif](assets/btop.gif)
+> watch the 100% go across all the cores, that's what we're doin!
 
 **1. Install Rust**
 ```bash
