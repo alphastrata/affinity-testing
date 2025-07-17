@@ -1,4 +1,4 @@
-- [] ask ze bois to run this
-- [] framebox
-- [] popbox
+- [x] ask ze bois to run this
+- [x] framebox
+- [x] popbox
 - [] toor?
