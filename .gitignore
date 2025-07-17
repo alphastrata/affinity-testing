@@ -1,0 +1,8 @@
+target
+.venv
+.mypy_cache
+*.csv
+*.html
+.env
+*.png
+*.cast

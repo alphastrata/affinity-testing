@@ -1,0 +1,3 @@
+# rust-toolchain.toml
+[toolchain]
+channel = "nightly" # Stable version as of 2025-07-18
