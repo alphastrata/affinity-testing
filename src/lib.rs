@@ -57,10 +57,16 @@ pub mod platform {
         use super::super::CpuStats;
         use std::io;
         pub fn set_affinity(_cpu_id: usize) -> io::Result<()> {
-            Err(io::Error::new(io::ErrorKind::Other, "CPU affinity not supported on this OS"))
+            Err(io::Error::new(
+                io::ErrorKind::Other,
+                "CPU affinity not supported on this OS",
+            ))
         }
         pub fn read_cpu_stats() -> io::Result<Vec<CpuStats>> {
-            Err(io::Error::new(io::ErrorKind::Other, "CPU stats not supported on this OS"))
+            Err(io::Error::new(
+                io::ErrorKind::Other,
+                "CPU stats not supported on this OS",
+            ))
         }
     }
 
@@ -74,10 +80,13 @@ pub mod platform {
     }
 
     pub fn get_num_logical_cpus(initial_stats: &[CpuStats]) -> usize {
-        if initial_stats.is_empty() { 0 } else { initial_stats.len() - 1 }
+        if initial_stats.is_empty() {
+            0
+        } else {
+            initial_stats.len() - 1
+        }
     }
 }
-
 
 #[derive(Default, Debug, Clone, Serialize)]
 pub struct CpuStats {
@@ -113,7 +122,11 @@ where
     if num_cpus == 0 {
         println!("Could not determine the number of logical CPUs. Running on current core only.");
         let (throughput, unit) = workload();
-        return vec![WorkloadResult { core_id: 0, throughput, unit }];
+        return vec![WorkloadResult {
+            core_id: 0,
+            throughput,
+            unit,
+        }];
     }
 
     println!("Detected {num_cpus} logical CPUs. Profiling workload on each core.");

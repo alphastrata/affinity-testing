@@ -20,8 +20,12 @@ struct AppArgs {
 #[target_feature(enable = "avx512f")]
 unsafe fn avx512_math_workload_inner() -> (f64, String) {
     let start_time = Instant::now();
-    let mut a = _mm512_set_ps(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0);
-    let b = _mm512_set_ps(0.9, 1.1, 0.9, 1.1, 0.9, 1.1, 0.9, 1.1, 0.9, 1.1, 0.9, 1.1, 0.9, 1.1, 0.9, 1.1);
+    let mut a = _mm512_set_ps(
+        1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+    );
+    let b = _mm512_set_ps(
+        0.9, 1.1, 0.9, 1.1, 0.9, 1.1, 0.9, 1.1, 0.9, 1.1, 0.9, 1.1, 0.9, 1.1, 0.9, 1.1,
+    );
 
     for _ in 0..SIMD_LOOPS {
         a = _mm512_mul_ps(a, b);

@@ -59,7 +59,7 @@ fn main() {
         let barrier = barrier.clone();
         let handle = thread::spawn(move || {
             if let Err(e) = platform::set_affinity(core_id_to_pin) {
-                eprintln!("Warning: Failed to set affinity for thread {}: {}", i, e);
+                eprintln!("Warning: Failed to set affinity for thread {i}: {e}");
             }
             barrier.wait();
             busy_work(duration);
@@ -71,7 +71,11 @@ fn main() {
         let barrier = barrier.clone();
         let handle = thread::spawn(move || {
             let mut file = File::create(output_path).expect("Could not create output file");
-            writeln!(file, "elapsed_ms,core_id,user_percent,system_percent,total_usage_percent").expect("Could not write header");
+            writeln!(
+                file,
+                "elapsed_ms,core_id,user_percent,system_percent,total_usage_percent"
+            )
+            .expect("Could not write header");
 
             barrier.wait();
             let start_time = Instant::now();
@@ -87,11 +91,27 @@ fn main() {
                     let current_core_stats = &current_stats[core_idx + 1];
 
                     let user_delta = current_core_stats.user.saturating_sub(last_core_stats.user);
-                    let system_delta = current_core_stats.system.saturating_sub(last_core_stats.system);
+                    let system_delta = current_core_stats
+                        .system
+                        .saturating_sub(last_core_stats.system);
                     let idle_delta = current_core_stats.idle.saturating_sub(last_core_stats.idle);
 
-                    let total_delta = (current_core_stats.user + current_core_stats.nice + current_core_stats.system + current_core_stats.idle + current_core_stats.iowait + current_core_stats.irq + current_core_stats.softirq + current_core_stats.steal) -
-                                      (last_core_stats.user + last_core_stats.nice + last_core_stats.system + last_core_stats.idle + last_core_stats.iowait + last_core_stats.irq + last_core_stats.softirq + last_core_stats.steal);
+                    let total_delta = (current_core_stats.user
+                        + current_core_stats.nice
+                        + current_core_stats.system
+                        + current_core_stats.idle
+                        + current_core_stats.iowait
+                        + current_core_stats.irq
+                        + current_core_stats.softirq
+                        + current_core_stats.steal)
+                        - (last_core_stats.user
+                            + last_core_stats.nice
+                            + last_core_stats.system
+                            + last_core_stats.idle
+                            + last_core_stats.iowait
+                            + last_core_stats.irq
+                            + last_core_stats.softirq
+                            + last_core_stats.steal);
 
                     let total_usage_percent = if total_delta > 0 {
                         100.0 * (1.0 - (idle_delta as f64 / total_delta as f64))
