@@ -2,6 +2,111 @@
 
 use serde::Serialize;
 
+// Architecture-specific SIMD modules
+#[cfg(target_arch = "x86_64")]
+pub mod simd_x86 {
+    use std::arch::x86_64::*;
+    use std::time::Instant;
+
+    // AVX2 SIMD implementation
+    pub fn avx2_multiply_workload(simd_loops: u64) -> (f64, String) {
+        if !is_x86_feature_detected!("avx2") {
+            panic!("AVX2 not supported on this CPU");
+        }
+
+        unsafe {
+            let start_time = Instant::now();
+            let mut a = _mm256_set_ps(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+            let b = _mm256_set_ps(0.9, 1.1, 0.9, 1.1, 0.9, 1.1, 0.9, 1.1);
+
+            for _ in 0..simd_loops {
+                a = _mm256_mul_ps(a, b);
+            }
+
+            let elapsed = start_time.elapsed();
+            let ops_per_second = (simd_loops * 8) as f64 / elapsed.as_secs_f64();
+
+            // Prevent optimization
+            let mut result = [0.0f32; 8];
+            _mm256_storeu_ps(result.as_mut_ptr(), a);
+            if result[0] == 0.0 {
+                println!("result is zero, which should not happen.");
+            }
+
+            (ops_per_second, "ops/sec".to_string())
+        }
+    }
+
+    // AVX512 SIMD implementation
+    #[target_feature(enable = "avx512f")]
+    pub unsafe fn avx512_multiply_workload_inner(simd_loops: u64) -> (f64, String) {
+        let start_time = Instant::now();
+        let mut a = _mm512_set_ps(
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+        );
+        let b = _mm512_set_ps(
+            0.9, 1.1, 0.9, 1.1, 0.9, 1.1, 0.9, 1.1, 0.9, 1.1, 0.9, 1.1, 0.9, 1.1, 0.9, 1.1,
+        );
+
+        for _ in 0..simd_loops {
+            a = _mm512_mul_ps(a, b);
+        }
+
+        let elapsed = start_time.elapsed();
+        let ops_per_second = (simd_loops * 16) as f64 / elapsed.as_secs_f64();
+
+        // Prevent optimization
+        let mut result = [0.0f32; 16];
+        _mm512_storeu_ps(result.as_mut_ptr(), a);
+        if result[0] == 0.0 {
+            println!("result is zero, which should not happen.");
+        }
+
+        (ops_per_second, "ops/sec".to_string())
+    }
+
+    pub fn avx512_multiply_workload(simd_loops: u64) -> (f64, String) {
+        if !is_x86_feature_detected!("avx512f") {
+            panic!("AVX512F not supported on this CPU");
+        }
+        unsafe { avx512_multiply_workload_inner(simd_loops) }
+    }
+}
+
+#[cfg(target_arch = "aarch64")]
+pub mod simd_arm {
+    use std::arch::aarch64::*;
+    use std::time::Instant;
+
+    // NEON SIMD implementation for ARM64
+    pub fn neon_multiply_workload(simd_loops: u64) -> (f64, String) {
+        if !std::arch::is_aarch64_feature_detected!("neon") {
+            panic!("NEON not supported on this CPU");
+        }
+
+        unsafe {
+            let start_time = Instant::now();
+            let mut a = vdupq_n_f32(1.0); // [1.0, 1.0, 1.0, 1.0]
+            let b = vdupq_n_f32(1.1); // [1.1, 1.1, 1.1, 1.1]
+
+            for _ in 0..simd_loops {
+                a = vmulq_f32(a, b); // Multiply 4 floats at once
+            }
+
+            let elapsed = start_time.elapsed();
+            let ops_per_second = (simd_loops * 4) as f64 / elapsed.as_secs_f64();
+
+            // Prevent optimization
+            let result_lane = vgetq_lane_f32(a, 0);
+            if result_lane == 0.0 {
+                println!("result is zero, which should not happen.");
+            }
+
+            (ops_per_second, "ops/sec".to_string())
+        }
+    }
+}
+
 // This module is defined inline to contain all platform-specific logic.
 pub mod platform {
     use super::CpuStats;
@@ -113,21 +218,22 @@ pub fn profile_workload_on_all_cores<F>(mut workload: F) -> Vec<WorkloadResult>
 where
     F: FnMut() -> (f64, String),
 {
-    let initial_stats = platform::read_cpu_stats().unwrap_or_else(|e| {
-        eprintln!("Could not read initial CPU stats: {e}. Exiting.");
-        std::process::exit(1);
-    });
+    let initial_stats = match platform::read_cpu_stats() {
+        Ok(stats) => stats,
+        Err(e) => {
+            eprintln!("Could not read initial CPU stats: {e}. Attempting to run with basic functionality.");
+            // Create a minimal stats vector to continue with at least 1 core
+            vec![CpuStats::default()]
+        }
+    };
 
+    // Get number of CPUs, with fallback behavior
     let num_cpus = platform::get_num_logical_cpus(&initial_stats);
-    if num_cpus == 0 {
-        println!("Could not determine the number of logical CPUs. Running on current core only.");
-        let (throughput, unit) = workload();
-        return vec![WorkloadResult {
-            core_id: 0,
-            throughput,
-            unit,
-        }];
-    }
+    let num_cpus = if num_cpus == 0 {
+        1  // Default to 1 core if we can't determine the number
+    } else {
+        num_cpus
+    };
 
     println!("Detected {num_cpus} logical CPUs. Profiling workload on each core.");
     let mut results = Vec::new();
