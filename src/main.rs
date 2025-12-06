@@ -1,9 +1,3 @@
-// This binary is intentionally left empty.
-// The core functionality is now in the library (`src/lib.rs`) and consumed by the
-// benchmark binaries in `src/bin/`.
-
 fn main() {
-    println!(
-        "This executable is a placeholder. Please run one of the benchmark binaries directly:"
-    );
+    core_profiler::main();
 }

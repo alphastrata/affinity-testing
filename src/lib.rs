@@ -78,7 +78,7 @@ pub mod simd_arm {
     use std::arch::aarch64::*;
     use std::time::Instant;
 
-    // NEON SIMD implementation for ARM64
+    // NEON SIMD implementation for ARM64 - basic float multiplication
     pub fn neon_multiply_workload(simd_loops: u64) -> (f64, String) {
         if !std::arch::is_aarch64_feature_detected!("neon") {
             panic!("NEON not supported on this CPU");
@@ -103,6 +103,274 @@ pub mod simd_arm {
             }
 
             (ops_per_second, "ops/sec".to_string())
+        }
+    }
+
+    // Advanced SIMD implementation using 2x2 f32 vectors for better utilization
+    pub fn neon_multiply_workload_advanced(simd_loops: u64) -> (f64, String) {
+        if !std::arch::is_aarch64_feature_detected!("neon") {
+            panic!("NEON not supported on this CPU");
+        }
+
+        unsafe {
+            let start_time = Instant::now();
+            let mut a1 = vdupq_n_f32(1.0);
+            let mut a2 = vdupq_n_f32(2.0);
+            let b1 = vdupq_n_f32(0.9);
+            let b2 = vdupq_n_f32(1.1);
+
+            for _ in 0..simd_loops {
+                a1 = vmulq_f32(a1, b1); // Multiply 4 floats at once
+                a2 = vmulq_f32(a2, b2); // Multiply another 4 floats
+            }
+
+            let elapsed = start_time.elapsed();
+            let ops_per_second = (simd_loops * 8) as f64 / elapsed.as_secs_f64();
+
+            // Prevent optimization
+            let result_lane1 = vgetq_lane_f32(a1, 0);
+            let result_lane2 = vgetq_lane_f32(a2, 0);
+            if result_lane1 == 0.0 || result_lane2 == 0.0 {
+                println!("result is zero, which should not happen.");
+            }
+
+            (ops_per_second, "ops/sec".to_string())
+        }
+    }
+
+    // NEON SIMD implementation for integer operations
+    pub fn neon_integer_workload(simd_loops: u64) -> (f64, String) {
+        if !std::arch::is_aarch64_feature_detected!("neon") {
+            panic!("NEON not supported on this CPU");
+        }
+
+        unsafe {
+            let start_time = Instant::now();
+            let mut a = vdupq_n_s32(100);
+            let b = vdupq_n_s32(50);
+
+            for _ in 0..simd_loops {
+                a = vaddq_s32(a, b); // Add 4 integers at once
+            }
+
+            let elapsed = start_time.elapsed();
+            let ops_per_second = (simd_loops * 4) as f64 / elapsed.as_secs_f64();
+
+            // Prevent optimization
+            let result_lane = vgetq_lane_s32(a, 0);
+            if result_lane == 0 {
+                println!("result is zero, which should not happen.");
+            }
+
+            (ops_per_second, "ops/sec".to_string())
+        }
+    }
+
+    // NEON SIMD implementation for floating-point addition
+    pub fn neon_add_workload(simd_loops: u64) -> (f64, String) {
+        if !std::arch::is_aarch64_feature_detected!("neon") {
+            panic!("NEON not supported on this CPU");
+        }
+
+        unsafe {
+            let start_time = Instant::now();
+            let mut a = vdupq_n_f32(1.0);
+            let b = vdupq_n_f32(2.5);
+
+            for _ in 0..simd_loops {
+                a = vaddq_f32(a, b); // Add 4 floats at once
+            }
+
+            let elapsed = start_time.elapsed();
+            let ops_per_second = (simd_loops * 4) as f64 / elapsed.as_secs_f64();
+
+            // Prevent optimization
+            let result_lane = vgetq_lane_f32(a, 0);
+            if result_lane == 0.0 {
+                println!("result is zero, which should not happen.");
+            }
+
+            (ops_per_second, "ops/sec".to_string())
+        }
+    }
+
+    // NEON SIMD implementation for mixed operations
+    pub fn neon_mixed_workload(simd_loops: u64) -> (f64, String) {
+        if !std::arch::is_aarch64_feature_detected!("neon") {
+            panic!("NEON not supported on this CPU");
+        }
+
+        unsafe {
+            let start_time = Instant::now();
+            let mut a = vdupq_n_f32(1.0);
+            let b = vdupq_n_f32(2.0);
+            let c = vdupq_n_f32(0.5);
+
+            for _ in 0..simd_loops {
+                a = vmulq_f32(a, b); // Multiply
+                a = vaddq_f32(a, c); // Add
+            }
+
+            let elapsed = start_time.elapsed();
+            let ops_per_second = (simd_loops * 8) as f64 / elapsed.as_secs_f64(); // 4 mults + 4 adds per loop
+
+            // Prevent optimization
+            let result_lane = vgetq_lane_f32(a, 0);
+            if result_lane == 0.0 {
+                println!("result is zero, which should not happen.");
+            }
+
+            (ops_per_second, "ops/sec".to_string())
+        }
+    }
+
+    // Advanced SIMD implementation using double precision
+    pub fn neon_double_precision_workload(simd_loops: u64) -> (f64, String) {
+        if !std::arch::is_aarch64_feature_detected!("neon") {
+            panic!("NEON not supported on this CPU");
+        }
+
+        unsafe {
+            let start_time = Instant::now();
+            let mut a = vdupq_n_f64(1.0);
+            let b = vdupq_n_f64(2.0);
+
+            for _ in 0..simd_loops {
+                a = vmulq_f64(a, b); // Multiply 2 doubles at once
+            }
+
+            let elapsed = start_time.elapsed();
+            let ops_per_second = (simd_loops * 2) as f64 / elapsed.as_secs_f64();
+
+            // Prevent optimization
+            let result_lane = vgetq_lane_f64(a, 0);
+            if result_lane == 0.0 {
+                println!("result is zero, which should not happen.");
+            }
+
+            (ops_per_second, "ops/sec".to_string())
+        }
+    }
+
+    // SIMD implementation using more complex operations (multiply-accumulate)
+    pub fn neon_multiply_accumulate_workload(simd_loops: u64) -> (f64, String) {
+        if !std::arch::is_aarch64_feature_detected!("neon") {
+            panic!("NEON not supported on this CPU");
+        }
+
+        unsafe {
+            let start_time = Instant::now();
+            let mut a = vdupq_n_f32(1.0);
+            let b = vdupq_n_f32(2.0);
+            let c = vdupq_n_f32(0.5);
+
+            for _ in 0..simd_loops {
+                a = vfmaq_f32(a, b, c); // Fused multiply-add: a = a + (b * c)
+            }
+
+            let elapsed = start_time.elapsed();
+            let ops_per_second = (simd_loops * 4) as f64 / elapsed.as_secs_f64();
+
+            // Prevent optimization
+            let result_lane = vgetq_lane_f32(a, 0);
+            if result_lane == 0.0 {
+                println!("result is zero, which should not happen.");
+            }
+
+            (ops_per_second, "ops/sec".to_string())
+        }
+    }
+
+    // SIMD implementation using vector loads from memory
+    pub fn neon_memory_workload(simd_loops: u64, size: usize) -> (f64, String) {
+        if !std::arch::is_aarch64_feature_detected!("neon") {
+            panic!("NEON not supported on this CPU");
+        }
+
+        // Initialize vectors with values
+        let mut data_a: Vec<f32> = (0..size).map(|i| (i % 4) as f32 + 1.0).collect();
+        let data_b: Vec<f32> = (0..size).map(|i| ((i + 1) % 4) as f32 + 0.5).collect();
+
+        unsafe {
+            let start_time = Instant::now();
+
+            for _ in 0..simd_loops {
+                for chunk_a in data_a.chunks_mut(4) {
+                    for chunk_b in data_b.chunks(4) {
+                        if chunk_a.len() >= 4 && chunk_b.len() >= 4 {
+                            let va = vld1q_f32(chunk_a.as_ptr() as *const f32);
+                            let vb = vld1q_f32(chunk_b.as_ptr() as *const f32);
+                            let result = vmulq_f32(va, vb);
+                            vst1q_f32(chunk_a.as_mut_ptr() as *mut f32, result);
+                        }
+                    }
+                }
+            }
+
+            let elapsed = start_time.elapsed();
+            // Count operations: simd_loops * (size/4 rounded down) * 4 ops
+            let ops = simd_loops * ((size / 4) as u64) * 4;
+            let ops_per_second = ops as f64 / elapsed.as_secs_f64();
+
+            // Prevent optimization
+            if data_a[0] == 0.0 {
+                println!("result is zero, which should not happen.");
+            }
+
+            (ops_per_second, "ops/sec".to_string())
+        }
+    }
+}
+
+// Main function to demonstrate the SIMD implementations
+pub fn main() {
+    println!("Testing ARM64 SIMD implementations (NEON)...");
+
+    #[cfg(target_arch = "aarch64")]
+    {
+        // Test different NEON implementations
+        println!("Testing basic NEON multiply: {:?}", simd_arm::neon_multiply_workload(1000000));
+        println!("Testing advanced NEON multiply: {:?}", simd_arm::neon_multiply_workload_advanced(1000000));
+        println!("Testing NEON integer operations: {:?}", simd_arm::neon_integer_workload(1000000));
+        println!("Testing NEON add operations: {:?}", simd_arm::neon_add_workload(1000000));
+        println!("Testing NEON mixed operations: {:?}", simd_arm::neon_mixed_workload(1000000));
+        println!("Testing NEON double precision: {:?}", simd_arm::neon_double_precision_workload(1000000));
+        println!("Testing NEON multiply-accumulate: {:?}", simd_arm::neon_multiply_accumulate_workload(1000000));
+        println!("Testing NEON memory operations: {:?}", simd_arm::neon_memory_workload(10000, 1024));
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    {
+        println!("Testing x86_64 SIMD implementations (AVX2/AVX512)...");
+        if std::arch::is_x86_feature_detected!("avx2") {
+            println!("Testing AVX2: {:?}", simd_x86::avx2_multiply_workload(1000000));
+        } else {
+            println!("AVX2 not supported on this CPU");
+        }
+
+        if std::arch::is_x86_feature_detected!("avx512f") {
+            println!("Testing AVX512: {:?}", simd_x86::avx512_multiply_workload(1000000));
+        } else {
+            println!("AVX512 not supported on this CPU");
+        }
+    }
+
+    // Test profiling on all cores
+    #[cfg(target_arch = "aarch64")]
+    {
+        println!("Profiling NEON multiply workload on all cores:");
+        let results = profile_workload_on_all_cores(|| simd_arm::neon_multiply_workload(100000));
+        for result in results {
+            println!("Core {}: {} {}", result.core_id, result.throughput, result.unit);
+        }
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    {
+        println!("Profiling AVX2 workload on all cores:");
+        let results = profile_workload_on_all_cores(|| simd_x86::avx2_multiply_workload(100000));
+        for result in results {
+            println!("Core {}: {} {}", result.core_id, result.throughput, result.unit);
         }
     }
 }

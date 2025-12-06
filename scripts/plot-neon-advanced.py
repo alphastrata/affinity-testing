@@ -1,0 +1,46 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import os
+
+CSV_FILE = "neon-advanced-stats.csv"
+
+
+def plot_throughput(csv_path):
+    """
+    Reads and plots the throughput data from the advanced NEON benchmark CSV.
+    """
+    if not os.path.exists(csv_path):
+        print(f"Error: Benchmark data file not found at '{csv_path}'")
+        print(
+            "Please run the benchmark first: ./target/release/neon-advanced --output neon-advanced-stats.csv"
+        )
+        return
+
+    df = pd.read_csv(csv_path)
+    df.columns = df.columns.str.strip()
+
+    if "core_id" not in df.columns or "throughput" not in df.columns:
+        print(
+            f"Error: CSV file '{csv_path}' is missing required 'core_id' or 'throughput' columns."
+        )
+        return
+
+    unit = df["unit"].dropna().iloc[0] if "unit" in df.columns else "units"
+
+    plt.style.use("seaborn-v0_8-whitegrid")
+    fig, ax = plt.subplots(figsize=(14, 8))
+
+    ax.plot(df["core_id"], df["throughput"], marker="o", linestyle="-", color="blue")
+    ax.set_xlabel("Core ID")
+    ax.set_ylabel(f"Throughput ({unit})")
+    ax.set_title("Advanced NEON SIMD Throughput per Core (Multiply Operations)")
+    ax.grid(True)
+    ax.set_xticks(df["core_id"])
+
+    output_path = "neon-advanced-throughput.png"
+    plt.savefig(output_path, bbox_inches="tight")
+    print(f"Plot saved to {output_path}")
+
+
+if __name__ == "__main__":
+    plot_throughput(CSV_FILE)
