@@ -1,4 +1,7 @@
+#[cfg(target_arch = "x86_64")]
 use argh::FromArgs;
+
+#[cfg(target_arch = "x86_64")]
 use core_profiler::{WorkloadResult};
 
 #[cfg(target_arch = "x86_64")]
@@ -51,7 +54,7 @@ fn write_results(path: &str, data: &[WorkloadResult]) -> Result<(), Box<dyn std:
 }
 
 #[cfg(not(target_arch = "x86_64"))]
-fn write_results(_path: &str, _data: &[WorkloadResult]) -> Result<(), Box<dyn std::error::Error>> {
+fn write_results(_path: &str, _data: &[core_profiler::WorkloadResult]) -> Result<(), Box<dyn std::error::Error>> {
     eprintln!("AVX2 SIMD workload is only supported on x86_64 architecture.");
     std::process::exit(1);
 }

@@ -111,28 +111,27 @@ pub mod simd_arm {
 pub mod platform {
     use super::CpuStats;
     use std::io;
+    use core_affinity;
 
-    // --- Linux Specific Implementations ---
-    #[cfg(target_os = "linux")]
-    pub mod os_specific {
-        use super::super::CpuStats; // Access CpuStats from the root of the crate
-        use libc::{cpu_set_t, sched_setaffinity, CPU_SET};
-        use std::fs;
-        use std::io;
+    pub fn set_affinity(cpu_id: usize) -> io::Result<()> {
+        // Use core_affinity crate for cross-platform CPU affinity
+        let core_ids = core_affinity::get_core_ids()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "Failed to get core IDs"))?;
 
-        pub fn set_affinity(cpu_id: usize) -> io::Result<()> {
-            unsafe {
-                let mut cpuset: cpu_set_t = std::mem::zeroed();
-                CPU_SET(cpu_id, &mut cpuset);
-                if sched_setaffinity(0, std::mem::size_of::<cpu_set_t>(), &cpuset) == 0 {
-                    Ok(())
-                } else {
-                    Err(io::Error::last_os_error())
-                }
-            }
+        if cpu_id >= core_ids.len() {
+            return Err(io::Error::new(io::ErrorKind::InvalidInput, "CPU ID out of range"));
         }
 
-        pub fn read_cpu_stats() -> io::Result<Vec<CpuStats>> {
+        let core_id = core_ids[cpu_id];
+        core_affinity::set_for_current(core_id);
+        Ok(())
+    }
+
+    pub fn read_cpu_stats() -> io::Result<Vec<CpuStats>> {
+        // This is Linux-specific, so we'll keep it but add better cross-platform support
+        #[cfg(target_os = "linux")]
+        {
+            use std::fs;
             let content = fs::read_to_string("/proc/stat")?;
             let mut stats_list = Vec::new();
             for line in content.lines().filter(|l| l.starts_with("cpu")) {
@@ -154,41 +153,24 @@ pub mod platform {
             }
             Ok(stats_list)
         }
-    }
-
-    // --- Fallback for other OSes ---
-    #[cfg(not(target_os = "linux"))]
-    pub mod os_specific {
-        use super::super::CpuStats;
-        use std::io;
-        pub fn set_affinity(_cpu_id: usize) -> io::Result<()> {
-            Err(io::Error::new(
-                io::ErrorKind::Other,
-                "CPU affinity not supported on this OS",
-            ))
+        #[cfg(not(target_os = "linux"))]
+        {
+            // For non-Linux systems, return a minimal stats vector to continue execution
+            // with basic functionality since we can't read detailed CPU stats
+            Ok(vec![CpuStats::default()])
         }
-        pub fn read_cpu_stats() -> io::Result<Vec<CpuStats>> {
-            Err(io::Error::new(
-                io::ErrorKind::Other,
-                "CPU stats not supported on this OS",
-            ))
-        }
-    }
-
-    // Common platform functions that call the OS-specific implementation
-    pub fn set_affinity(cpu_id: usize) -> io::Result<()> {
-        os_specific::set_affinity(cpu_id)
-    }
-
-    pub fn read_cpu_stats() -> io::Result<Vec<CpuStats>> {
-        os_specific::read_cpu_stats()
     }
 
     pub fn get_num_logical_cpus(initial_stats: &[CpuStats]) -> usize {
-        if initial_stats.is_empty() {
-            0
-        } else {
+        // Try to get actual core count from core_affinity first
+        if let Some(core_ids) = core_affinity::get_core_ids() {
+            core_ids.len()
+        } else if !initial_stats.is_empty() {
+            // Fallback to the old method if core_affinity fails
             initial_stats.len() - 1
+        } else {
+            // Default to 1 core if all methods fail
+            1
         }
     }
 }

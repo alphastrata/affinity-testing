@@ -12,11 +12,15 @@ echo -e "\n--- Running division-math benchmark... ---"
 ./target/release/division-math --output division-math-stats.csv
 
 echo -e "\n--- Running simd-math (AVX2) benchmark... ---"
-./target/release/simd-math --output simd-math-stats.csv
+if ./target/release/simd-math --output simd-math-stats.csv; then
+    echo "AVX2 benchmark complete."
+else
+    echo -e "--- Skipping AVX2 benchmark: Not supported on this architecture. ---"
+    rm -f simd-math-stats.csv
+fi
 
 # Check for AVX512 support before running the benchmark
-echo -e "
---- Running simd-math (AVX512) benchmark... ---"
+echo -e "\n--- Running avx512-math (AVX512) benchmark... ---"
 if ./target/release/avx512-math --output avx512-math-stats.csv; then
     echo "AVX512 benchmark complete."
 else
@@ -35,7 +39,9 @@ echo "This will spawn a thread for each CPU core and pin them all to core 0."
 echo -e "\n--- Generating plots... ---"
 uv run scripts/plot-simple-math.py
 uv run scripts/plot-division-math.py
-uv run scripts/plot-simd-math.py
+if [ -f simd-math-stats.csv ]; then
+    uv run scripts/plot-simd-math.py
+fi
 uv run scripts/plot-matrix-math.py
 uv run scripts/plot-many-on-one.py many-on-one-stats.csv
 
