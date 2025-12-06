@@ -86,8 +86,20 @@ fn main() {
                 let current_stats = read_cpu_stats().unwrap();
 
                 // On non-Linux systems, detailed per-core stats may not be available
-                // so we'll only report the aggregate stats if available
-                if current_stats.len() > 1 {
+                if current_stats.is_empty() {
+                    // Skip detailed CPU monitoring on platforms where it's not available
+                    // We'll write a message to indicate this limitation
+                    writeln!(
+                        file,
+                        "{},{},{:.2},{:.2},{:.2}",
+                        start_time.elapsed().as_millis(),
+                        0,  // Just report on core 0 as a placeholder
+                        0.0, // User % - not available
+                        0.0,  // System % - not available
+                        0.0   // Total % - not available
+                    )
+                    .expect("Could not write to output file");
+                } else if current_stats.len() > 1 {
                     // Linux and some other systems with detailed per-core stats
                     for core_idx in 0..num_cpus.min(current_stats.len() - 1) {
                         // The first stat is the aggregate, so we skip it by adding 1.
@@ -146,7 +158,7 @@ fn main() {
                         )
                         .expect("Could not write to output file");
                     }
-                } else if current_stats.len() == 1 && num_cpus > 1 {
+                } else if current_stats.len() == 1 {
                     // On non-Linux systems without per-core stats, we'll still record aggregate data for all cores
                     // This records the same aggregate stats for each core
                     for core_idx in 0..num_cpus {
@@ -206,62 +218,6 @@ fn main() {
                         )
                         .expect("Could not write to output file");
                     }
-                } else if current_stats.len() == 1 && num_cpus <= 1 {
-                    // Single core system or fallback case
-                    let last_core_stats = &last_stats[0];
-                    let current_core_stats = &current_stats[0];
-
-                    let user_delta = current_core_stats.user.saturating_sub(last_core_stats.user);
-                    let system_delta = current_core_stats
-                        .system
-                        .saturating_sub(last_core_stats.system);
-                    let idle_delta = current_core_stats.idle.saturating_sub(last_core_stats.idle);
-
-                    let total_delta = (current_core_stats.user
-                        + current_core_stats.nice
-                        + current_core_stats.system
-                        + current_core_stats.idle
-                        + current_core_stats.iowait
-                        + current_core_stats.irq
-                        + current_core_stats.softirq
-                        + current_core_stats.steal)
-                        - (last_core_stats.user
-                            + last_core_stats.nice
-                            + last_core_stats.system
-                            + last_core_stats.idle
-                            + last_core_stats.iowait
-                            + last_core_stats.irq
-                            + last_core_stats.softirq
-                            + last_core_stats.steal);
-
-                    let total_usage_percent = if total_delta > 0 {
-                        100.0 * (1.0 - (idle_delta as f64 / total_delta as f64))
-                    } else {
-                        0.0
-                    };
-
-                    let user_percent = if total_delta > 0 {
-                        100.0 * (user_delta as f64 / total_delta as f64)
-                    } else {
-                        0.0
-                    };
-
-                    let system_percent = if total_delta > 0 {
-                        100.0 * (system_delta as f64 / total_delta as f64)
-                    } else {
-                        0.0
-                    };
-
-                    writeln!(
-                        file,
-                        "{},{},{:.2},{:.2},{:.2}",
-                        start_time.elapsed().as_millis(),
-                        0,
-                        user_percent,
-                        system_percent,
-                        total_usage_percent
-                    )
-                    .expect("Could not write to output file");
                 }
 
                 last_stats = current_stats;

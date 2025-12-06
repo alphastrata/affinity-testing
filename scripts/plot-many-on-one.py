@@ -23,28 +23,45 @@ def plot_cpu_usage(file_path):
         )
         return
 
-    # Calculate the average usage for each core
-    avg_usage = df.groupby("core_id")[["user_percent", "system_percent"]].mean()
+    # Check if all values are 0, which indicates that detailed CPU monitoring was not available
+    all_user_zero = (df["user_percent"] == 0.0).all()
+    all_system_zero = (df["system_percent"] == 0.0).all()
 
-    # Plotting
-    plt.style.use("seaborn-v0_8-whitegrid")
-    fig, ax = plt.subplots(figsize=(14, 8))
+    if all_user_zero and all_system_zero:
+        print("Warning: All CPU usage values are 0. This indicates that detailed CPU monitoring")
+        print("was not available on the platform where the benchmark was run.")
+        print("The benchmark ran successfully, but per-core CPU usage was not measurable.")
+        # Still create a plot, but with a note
+        fig, ax = plt.subplots(figsize=(14, 8))
+        ax.text(0.5, 0.5, 'CPU Usage Monitoring Not Available\n(All values are 0)',
+                horizontalalignment='center', verticalalignment='center',
+                transform=ax.transAxes, fontsize=16)
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        ax.set_title("CPU Usage Monitoring Unavailable on Platform")
+    else:
+        # Calculate the average usage for each core
+        avg_usage = df.groupby("core_id")[["user_percent", "system_percent"]].mean()
 
-    cores = avg_usage.index
-    user_p = avg_usage["user_percent"]
-    system_p = avg_usage["system_percent"]
+        # Plotting
+        plt.style.use("seaborn-v0_8-whitegrid")
+        fig, ax = plt.subplots(figsize=(14, 8))
 
-    # Create stacked bar chart
-    ax.bar(cores, user_p, label="User %")
-    ax.bar(cores, system_p, bottom=user_p, label="System %")
+        cores = avg_usage.index
+        user_p = avg_usage["user_percent"]
+        system_p = avg_usage["system_percent"]
 
-    ax.set_xlabel("Core ID")
-    ax.set_ylabel("Average CPU Usage (%)")
-    ax.set_title("Average CPU Load per Core")
-    ax.set_xticks(cores)
-    ax.set_ylim(0, 105)
-    ax.legend()
-    ax.grid(True, which="both", linestyle="--", linewidth=0.5)
+        # Create stacked bar chart
+        ax.bar(cores, user_p, label="User %")
+        ax.bar(cores, system_p, bottom=user_p, label="System %")
+
+        ax.set_xlabel("Core ID")
+        ax.set_ylabel("Average CPU Usage (%)")
+        ax.set_title("Average CPU Load per Core")
+        ax.set_xticks(cores)
+        ax.set_ylim(0, 105)
+        ax.legend()
+        ax.grid(True, which="both", linestyle="--", linewidth=0.5)
 
     # Save the plot
     output_path = "cpu_usage_matplotlib.png"

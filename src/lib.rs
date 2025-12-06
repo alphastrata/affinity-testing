@@ -423,9 +423,9 @@ pub mod platform {
         }
         #[cfg(not(target_os = "linux"))]
         {
-            // For non-Linux systems, return a minimal stats vector to continue execution
-            // with basic functionality since we can't read detailed CPU stats
-            Ok(vec![CpuStats::default()])
+            // For non-Linux systems, we can't get detailed per-core stats easily
+            // Return empty vector to indicate that detailed CPU monitoring is not available
+            Ok(vec![])
         }
     }
 
@@ -435,7 +435,12 @@ pub mod platform {
             core_ids.len()
         } else if !initial_stats.is_empty() {
             // Fallback to the old method if core_affinity fails
-            initial_stats.len() - 1
+            // For Linux systems, stats[0] is aggregate, so actual cores start from index 1
+            if initial_stats.len() > 1 {
+                initial_stats.len() - 1  // Exclude the aggregate CPU0 stats
+            } else {
+                1  // Single core system
+            }
         } else {
             // Default to 1 core if all methods fail
             1
@@ -472,8 +477,8 @@ where
         Ok(stats) => stats,
         Err(e) => {
             eprintln!("Could not read initial CPU stats: {e}. Attempting to run with basic functionality.");
-            // Create a minimal stats vector to continue with at least 1 core
-            vec![CpuStats::default()]
+            // Return empty vector to indicate no detailed stats available
+            vec![]
         }
     };
 
@@ -486,6 +491,12 @@ where
     };
 
     println!("Detected {num_cpus} logical CPUs. Profiling workload on each core.");
+
+    // On non-Linux systems, we may not have detailed CPU stats, but core affinity still works
+    if initial_stats.is_empty() {
+        println!("Note: Detailed CPU usage statistics are not available on this platform.");
+    }
+
     let mut results = Vec::new();
 
     for core_id in 0..num_cpus {
